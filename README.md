@@ -15,3 +15,4 @@ A step by step tutorial on how to create a chess engine in Rust.
 - [Part 9](./parts/0009.md) - Draw Detection
 - [Part 10](./parts/0010.md) - Nullmove
 - [Part 11](./parts/0011.md) - Perft
+- [Part 12](./parts/0012.md) - UCI
