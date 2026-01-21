@@ -1,5 +1,6 @@
 use std::ops::Not;
 
+pub mod fen;
 pub mod position;
 pub mod square;
 
