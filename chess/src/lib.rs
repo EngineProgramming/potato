@@ -1,5 +1,6 @@
 use std::ops::Not;
 
+pub mod fen;
 pub mod position;
 pub mod square;
 
@@ -23,6 +24,13 @@ pub enum Piece {
 pub enum Side {
     White,
     Black,
+}
+
+pub enum Castling {
+    WKS,
+    WQS,
+    BKS,
+    BQS,
 }
 
 impl Not for Side {
