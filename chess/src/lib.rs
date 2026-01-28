@@ -2,6 +2,7 @@ use std::ops::Not;
 
 pub mod fen;
 pub mod is_attacked;
+pub mod makemove;
 pub mod mv;
 pub mod position;
 pub mod square;

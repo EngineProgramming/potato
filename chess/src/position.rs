@@ -37,4 +37,9 @@ impl Position {
     pub fn set_piece(&mut self, piece: Piece, sq: Square) {
         self.board[sq.x as usize][sq.y as usize] = Some(piece);
     }
+
+    /// Clear a square on the board
+    pub fn clear_square(&mut self, sq: Square) {
+        self.board[sq.x as usize][sq.y as usize] = None;
+    }
 }
