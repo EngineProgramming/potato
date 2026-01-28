@@ -9,3 +9,4 @@ A step by step tutorial on how to create a chess engine in Rust.
 - [Part 3](./parts/0003.md) - FEN Parsing
 - [Part 4](./parts/0004.md) - The Move Struct
 - [Part 5](./parts/0005.md) - Is Square Attacked
+- [Part 6](./parts/0006.md) - Makemove

@@ -1,7 +1,7 @@
-use crate::{Piece, Side, square::Square};
+use crate::{Piece, Side, square::Square, undomove::Undo};
 
 /// This struct holds all the information about a chess position.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Position {
     pub board: [[Option<Piece>; 8]; 8],
     pub turn: Side,
@@ -10,6 +10,7 @@ pub struct Position {
     pub ep: Option<Square>,
     pub castling: [bool; 4],
     pub ksq: [Option<Square>; 2],
+    pub history: Vec<Undo>,
 }
 
 impl Default for Position {
@@ -22,6 +23,7 @@ impl Default for Position {
             ep: None,
             castling: [false; 4],
             ksq: [None; 2],
+            history: Vec::new(),
         }
     }
 }
@@ -36,5 +38,10 @@ impl Position {
     /// Place a piece on the board
     pub const fn set_piece(&mut self, piece: Piece, sq: Square) {
         self.board[sq.get_x() as usize][sq.get_y() as usize] = Some(piece);
+    }
+
+    /// Clear a square on the board
+    pub const fn clear_square(&mut self, sq: Square) {
+        self.board[sq.get_x() as usize][sq.get_y() as usize] = None;
     }
 }
