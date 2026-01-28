@@ -39,4 +39,11 @@ impl Position {
         let y = sq.get_y() as usize;
         self.board[x][y] = Some(piece);
     }
+
+    /// Clear a square on the board
+    pub fn clear_square(&mut self, sq: Square) {
+        let x = sq.get_x() as usize;
+        let y = sq.get_y() as usize;
+        self.board[x][y] = None;
+    }
 }
