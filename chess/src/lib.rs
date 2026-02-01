@@ -1,6 +1,7 @@
 use std::ops::Not;
 
 pub mod fen;
+pub mod is_attacked;
 pub mod mv;
 pub mod position;
 pub mod square;
