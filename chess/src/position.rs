@@ -42,4 +42,25 @@ impl Position {
     pub fn clear_square(&mut self, sq: Square) {
         self.board[sq.x as usize][sq.y as usize] = None;
     }
+
+    /// Get the colour of the piece on a given square
+    pub fn get_side_on(&self, sq: Square) -> Option<Side> {
+        match self.get_side_piece_on(sq) {
+            Some(Piece::WP) => Some(Side::White),
+            Some(Piece::WN) => Some(Side::White),
+            Some(Piece::WB) => Some(Side::White),
+            Some(Piece::WR) => Some(Side::White),
+            Some(Piece::WQ) => Some(Side::White),
+            Some(Piece::WK) => Some(Side::White),
+
+            Some(Piece::BP) => Some(Side::Black),
+            Some(Piece::BN) => Some(Side::Black),
+            Some(Piece::BB) => Some(Side::Black),
+            Some(Piece::BR) => Some(Side::Black),
+            Some(Piece::BQ) => Some(Side::Black),
+            Some(Piece::BK) => Some(Side::Black),
+
+            None => None,
+        }
+    }
 }
