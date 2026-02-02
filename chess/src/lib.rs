@@ -5,6 +5,7 @@ pub mod is_attacked;
 pub mod makemove;
 pub mod movegen;
 pub mod mv;
+pub mod perft;
 pub mod position;
 pub mod square;
 
