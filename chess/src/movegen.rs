@@ -1,95 +1,10 @@
 use crate::{
     Castling, Piece, Side,
+    bitboard::Bitboard,
     mv::{Mv, PromoPiece},
     position::Position,
     square::Square,
 };
-
-static KNIGHT: [(i32, i32); 8] = [
-    (-1, 2),
-    (1, 2),
-    (2, 1),
-    (2, -1),
-    (-1, -2),
-    (1, -2),
-    (-2, -1),
-    (-2, 1),
-];
-
-static BISHOP: [(i32, i32); 4] = [(1, 1), (1, -1), (-1, -1), (-1, 1)];
-
-static ROOK: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-
-static QUEEN: [(i32, i32); 8] = [
-    (1, 1),
-    (1, -1),
-    (-1, -1),
-    (-1, 1),
-    (1, 0),
-    (-1, 0),
-    (0, 1),
-    (0, -1),
-];
-
-static KING: [(i32, i32); 8] = [
-    (-1, -1),
-    (-1, 0),
-    (-1, 1),
-    (0, -1),
-    (0, 1),
-    (1, -1),
-    (1, 0),
-    (1, 1),
-];
-
-fn generate_nonsliding(pos: &Position, movelist: &mut Vec<Mv>, from: Square, dirs: &[(i32, i32)]) {
-    for (dx, dy) in dirs {
-        let nx = from.x as i32 + dx;
-        let ny = from.y as i32 + dy;
-
-        // Destination square is off the board
-        if !(0..=7).contains(&nx) || !(0..=7).contains(&ny) {
-            continue;
-        }
-
-        let to = Square::from_file_rank(nx as u8, ny as u8);
-
-        // Capture friendly piece
-        if pos.get_side_on(to) == Some(pos.turn) {
-            continue;
-        }
-
-        movelist.push(Mv {
-            from,
-            to,
-            promo: None,
-        });
-    }
-}
-
-fn generate_sliding(pos: &Position, movelist: &mut Vec<Mv>, from: Square, dirs: &[(i32, i32)]) {
-    for (dx, dy) in dirs {
-        let mut nx = from.x as i32 + dx;
-        let mut ny = from.y as i32 + dy;
-
-        while (0..8).contains(&nx) && (0..8).contains(&ny) {
-            let to = Square::from_file_rank(nx as u8, ny as u8);
-            if pos.get_side_on(to) == Some(pos.turn) {
-                break;
-            }
-            movelist.push(Mv {
-                from,
-                to,
-                promo: None,
-            });
-            if pos.get_side_on(to) == Some(!pos.turn) {
-                break;
-            }
-            nx += dx;
-            ny += dy;
-        }
-    }
-}
 
 fn push_promotions(movelist: &mut Vec<Mv>, from: Square, to: Square) {
     movelist.push(Mv {
@@ -114,6 +29,29 @@ fn push_promotions(movelist: &mut Vec<Mv>, from: Square, to: Square) {
     });
 }
 
+/// Iterate over a piece mask
+/// Generate moves for each piece
+fn generate_moves(
+    movelist: &mut Vec<Mv>,
+    mut pieces: Bitboard,
+    us: Bitboard,
+    them: Bitboard,
+    func: &dyn Fn(Square, Bitboard) -> Bitboard,
+) {
+    while pieces.is_occupied() {
+        let from = pieces.pop_lsb();
+        let mut moves = func(from, us | them) & !us;
+        while moves.is_occupied() {
+            let to = moves.pop_lsb();
+            movelist.push(Mv {
+                from,
+                to,
+                promo: None,
+            });
+        }
+    }
+}
+
 impl Position {
     /// Generate pseudolegal moves
     /// This includes moves that leave the king in check
@@ -121,111 +59,157 @@ impl Position {
     pub fn pseudolegal_moves(&self) -> Vec<Mv> {
         let mut movelist = vec![];
 
-        for x in 0..8i32 {
-            for y in 0..8i32 {
-                let from = Square::from_file_rank(x as u8, y as u8);
-                let piece = self.get_side_piece_on(from);
+        let us = self.colours[self.turn as usize];
+        let them = self.colours[!self.turn as usize];
+        let pawns = us & self.pieces[Piece::Pawn as usize];
+        let knights = us & self.pieces[Piece::Knight as usize];
+        let bishops = us & self.pieces[Piece::Bishop as usize];
+        let rooks = us & self.pieces[Piece::Rook as usize];
+        let queens = us & self.pieces[Piece::Queen as usize];
+        let king = us & self.pieces[Piece::King as usize];
+        let ep_bb = if let Some(ep) = self.ep {
+            Bitboard::from_square(ep)
+        } else {
+            Bitboard::from_empty()
+        };
 
-                if self.get_side_on(from) != Some(self.turn) {
-                    continue;
+        // Pawns
+        if self.turn == Side::White {
+            // Singles
+            let mut north: Bitboard = pawns.north() & !(us | them);
+            while north.is_occupied() {
+                let to = north.pop_lsb();
+                let from = Square::from_index(to.get_index() - 8);
+                if to.y == 7 {
+                    push_promotions(&mut movelist, from, to);
+                } else {
+                    movelist.push(Mv {
+                        from,
+                        to,
+                        promo: None,
+                    });
                 }
+            }
 
-                match piece {
-                    Some(Piece::WP) | Some(Piece::BP) => {
-                        let forwards = if self.turn == Side::White { 1 } else { -1 };
-                        let promo_rank = if self.turn == Side::White { 7 } else { 0 };
-                        let double_rank = if self.turn == Side::White { 1 } else { 6 };
-                        let single = Square::from_file_rank(x as u8, (y + forwards) as u8);
-                        let is_promo = y + forwards == promo_rank;
+            // Doubles
+            let mut north: Bitboard =
+                ((pawns & Bitboard(0xFF00)).north() & !(us | them)).north() & !(us | them);
+            while north.is_occupied() {
+                let to = north.pop_lsb();
+                let from = Square::from_index(to.get_index() - 16);
+                movelist.push(Mv {
+                    from,
+                    to,
+                    promo: None,
+                });
+            }
 
-                        // Captures
-                        for dx in [-1, 1] {
-                            let nx = x + dx;
-                            let ny = y + forwards;
+            // Captures
+            let mut ne = pawns.north().east() & (them | ep_bb);
+            while ne.is_occupied() {
+                let to = ne.pop_lsb();
+                let from = Square::from_index(to.get_index() - 9);
+                if to.y == 7 {
+                    push_promotions(&mut movelist, from, to);
+                } else {
+                    movelist.push(Mv {
+                        from,
+                        to,
+                        promo: None,
+                    });
+                }
+            }
+            let mut nw = pawns.north().west() & (them | ep_bb);
+            while nw.is_occupied() {
+                let to = nw.pop_lsb();
+                let from = Square::from_index(to.get_index() - 7);
+                if to.y == 7 {
+                    push_promotions(&mut movelist, from, to);
+                } else {
+                    movelist.push(Mv {
+                        from,
+                        to,
+                        promo: None,
+                    });
+                }
+            }
+        } else {
+            // Singles
+            let mut south: Bitboard = pawns.south() & !(us | them);
+            while south.is_occupied() {
+                let to = south.pop_lsb();
+                let from = Square::from_index(to.get_index() + 8);
+                if to.y == 0 {
+                    push_promotions(&mut movelist, from, to);
+                } else {
+                    movelist.push(Mv {
+                        from,
+                        to,
+                        promo: None,
+                    });
+                }
+            }
 
-                            // Off the board
-                            if !(0..=7).contains(&nx) {
-                                continue;
-                            }
+            // Doubles
+            let mut south: Bitboard = ((pawns & Bitboard(0xFF000000000000)).south() & !(us | them))
+                .south()
+                & !(us | them);
+            while south.is_occupied() {
+                let to = south.pop_lsb();
+                let from = Square::from_index(to.get_index() + 16);
+                movelist.push(Mv {
+                    from,
+                    to,
+                    promo: None,
+                });
+            }
 
-                            let to = Square::from_file_rank(nx as u8, ny as u8);
-                            let is_ep = self.ep == Some(to);
-                            let is_capture = is_ep || self.get_side_on(to) == Some(!self.turn);
-
-                            // Not a capture or EP
-                            if !is_capture && !is_ep {
-                                continue;
-                            }
-
-                            if is_promo {
-                                push_promotions(&mut movelist, from, to);
-                            } else {
-                                movelist.push(Mv {
-                                    from,
-                                    to,
-                                    promo: None,
-                                });
-                            }
-                        }
-
-                        // Double move
-                        if y == double_rank
-                            && let double =
-                                Square::from_file_rank(x as u8, (y + forwards + forwards) as u8)
-                            && self.get_side_on(single).is_none()
-                            && self.get_side_on(double).is_none()
-                        {
-                            movelist.push(Mv {
-                                from,
-                                to: double,
-                                promo: None,
-                            });
-                        }
-
-                        // Single move
-                        if self.get_side_on(single).is_none() {
-                            if is_promo {
-                                push_promotions(&mut movelist, from, single);
-                            } else {
-                                movelist.push(Mv {
-                                    from,
-                                    to: single,
-                                    promo: None,
-                                });
-                            }
-                        }
-                    }
-                    Some(Piece::WN) | Some(Piece::BN) => {
-                        generate_nonsliding(self, &mut movelist, from, &KNIGHT)
-                    }
-                    Some(Piece::WB) | Some(Piece::BB) => {
-                        generate_sliding(self, &mut movelist, from, &BISHOP)
-                    }
-                    Some(Piece::WR) | Some(Piece::BR) => {
-                        generate_sliding(self, &mut movelist, from, &ROOK)
-                    }
-                    Some(Piece::WQ) | Some(Piece::BQ) => {
-                        generate_sliding(self, &mut movelist, from, &QUEEN)
-                    }
-                    Some(Piece::WK) | Some(Piece::BK) => {
-                        generate_nonsliding(self, &mut movelist, from, &KING)
-                    }
-                    None => unreachable!("Empty square already accounted for"),
+            // Captures
+            let mut se = pawns.south().east() & (them | ep_bb);
+            while se.is_occupied() {
+                let to = se.pop_lsb();
+                let from = Square::from_index(to.get_index() + 7);
+                if to.y == 0 {
+                    push_promotions(&mut movelist, from, to);
+                } else {
+                    movelist.push(Mv {
+                        from,
+                        to,
+                        promo: None,
+                    });
+                }
+            }
+            let mut sw = pawns.south().west() & (them | ep_bb);
+            while sw.is_occupied() {
+                let to = sw.pop_lsb();
+                let from = Square::from_index(to.get_index() + 9);
+                if to.y == 0 {
+                    push_promotions(&mut movelist, from, to);
+                } else {
+                    movelist.push(Mv {
+                        from,
+                        to,
+                        promo: None,
+                    });
                 }
             }
         }
 
-        let in_check = self.is_attacked(
-            self.ksq[self.turn as usize].expect("ksq not found"),
-            !self.turn,
-        );
+        generate_moves(&mut movelist, knights, us, them, &Bitboard::mask_knight);
+        generate_moves(&mut movelist, bishops, us, them, &Bitboard::mask_bishop);
+        generate_moves(&mut movelist, rooks, us, them, &Bitboard::mask_rook);
+        generate_moves(&mut movelist, queens, us, them, &Bitboard::mask_queen);
+        generate_moves(&mut movelist, king, us, them, &Bitboard::mask_king);
+
+        let ksq = (self.colours[self.turn as usize] & self.pieces[Piece::King as usize]).pop_lsb();
+        let in_check = self.is_attacked(ksq, !self.turn);
 
         // Castling - white king side
         if self.turn == Side::White
             && self.castling[Castling::WKS as usize]
             && !in_check
-            && self.get_side_piece_on(Square::from_index(5)).is_none()
-            && self.get_side_piece_on(Square::from_index(6)).is_none()
+            && self.is_empty(Square::from_index(5))
+            && self.is_empty(Square::from_index(6))
             && !self.is_attacked(Square::from_index(5), !self.turn)
             && !self.is_attacked(Square::from_index(6), !self.turn)
         {
@@ -240,9 +224,9 @@ impl Position {
         if self.turn == Side::White
             && self.castling[Castling::WQS as usize]
             && !in_check
-            && self.get_side_piece_on(Square::from_index(3)).is_none()
-            && self.get_side_piece_on(Square::from_index(2)).is_none()
-            && self.get_side_piece_on(Square::from_index(1)).is_none()
+            && self.is_empty(Square::from_index(3))
+            && self.is_empty(Square::from_index(2))
+            && self.is_empty(Square::from_index(1))
             && !self.is_attacked(Square::from_index(3), !self.turn)
             && !self.is_attacked(Square::from_index(2), !self.turn)
         {
@@ -257,8 +241,8 @@ impl Position {
         if self.turn == Side::Black
             && self.castling[Castling::BKS as usize]
             && !in_check
-            && self.get_side_piece_on(Square::from_index(61)).is_none()
-            && self.get_side_piece_on(Square::from_index(62)).is_none()
+            && self.is_empty(Square::from_index(61))
+            && self.is_empty(Square::from_index(62))
             && !self.is_attacked(Square::from_index(61), !self.turn)
             && !self.is_attacked(Square::from_index(62), !self.turn)
         {
@@ -273,9 +257,9 @@ impl Position {
         if self.turn == Side::Black
             && self.castling[Castling::BQS as usize]
             && !in_check
-            && self.get_side_piece_on(Square::from_index(59)).is_none()
-            && self.get_side_piece_on(Square::from_index(58)).is_none()
-            && self.get_side_piece_on(Square::from_index(57)).is_none()
+            && self.is_empty(Square::from_index(59))
+            && self.is_empty(Square::from_index(58))
+            && self.is_empty(Square::from_index(57))
             && !self.is_attacked(Square::from_index(59), !self.turn)
             && !self.is_attacked(Square::from_index(58), !self.turn)
         {

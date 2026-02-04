@@ -1,5 +1,6 @@
 use std::ops::Not;
 
+pub mod bitboard;
 pub mod fen;
 pub mod is_attacked;
 pub mod makemove;
@@ -11,18 +12,12 @@ pub mod square;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum Piece {
-    WP,
-    WN,
-    WB,
-    WR,
-    WQ,
-    WK,
-    BP,
-    BN,
-    BB,
-    BR,
-    BQ,
-    BK,
+    Pawn,
+    Knight,
+    Bishop,
+    Rook,
+    Queen,
+    King,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]

@@ -11,10 +11,10 @@ impl Position {
     #[must_use]
     pub fn makemove(&mut self, mv: &Mv) -> bool {
         let piece = self
-            .get_side_piece_on(mv.from)
+            .get_piece_on(mv.from)
             .expect("No piece on move origin square");
 
-        let captured = self.get_side_piece_on(mv.to);
+        let captured = self.get_piece_on(mv.to);
 
         self.halfmoves += 1;
 
@@ -22,10 +22,13 @@ impl Position {
         self.clear_square(mv.from);
 
         // Remove captured
-        self.set_piece(piece, mv.to);
+        self.clear_square(mv.to);
+
+        // Place piece
+        self.set_piece(mv.to, self.turn, piece);
 
         // Pawn moves reset the halfmove counter
-        if piece == Piece::WP || piece == Piece::BP {
+        if piece == Piece::Pawn {
             self.halfmoves = 0;
         }
 
@@ -36,17 +39,15 @@ impl Position {
 
         // Did we just capture with EP?
         if let Some(sq) = self.ep
-            && piece == Piece::WP
+            && piece == Piece::Pawn
             && mv.to == sq
         {
-            self.clear_square(Square::from_file_rank(mv.to.x, mv.to.y - 1));
-            self.halfmoves = 0;
-        }
-        if let Some(sq) = self.ep
-            && piece == Piece::BP
-            && mv.to == sq
-        {
-            self.clear_square(Square::from_file_rank(mv.to.x, mv.to.y + 1));
+            if self.turn == Side::White {
+                self.clear_square(Square::from_file_rank(mv.to.x, mv.to.y - 1));
+            } else {
+                self.clear_square(Square::from_file_rank(mv.to.x, mv.to.y + 1));
+            }
+
             self.halfmoves = 0;
         }
 
@@ -54,24 +55,32 @@ impl Position {
         self.ep = None;
 
         // Set EP square?
-        if piece == Piece::WP && mv.from.y == 1 && mv.to.y == 3 {
+        if piece == Piece::Pawn && mv.from.y == 1 && mv.to.y == 3 {
             self.ep = Some(Square::from_file_rank(mv.from.x, 2));
         }
-        if piece == Piece::BP && mv.from.y == 6 && mv.to.y == 4 {
+        if piece == Piece::Pawn && mv.from.y == 6 && mv.to.y == 4 {
             self.ep = Some(Square::from_file_rank(mv.from.x, 5));
         }
 
         // Promotions
-        match (self.turn, mv.promo) {
-            (Side::White, Some(PromoPiece::Queen)) => self.set_piece(Piece::WQ, mv.to),
-            (Side::White, Some(PromoPiece::Rook)) => self.set_piece(Piece::WR, mv.to),
-            (Side::White, Some(PromoPiece::Bishop)) => self.set_piece(Piece::WB, mv.to),
-            (Side::White, Some(PromoPiece::Knight)) => self.set_piece(Piece::WN, mv.to),
-            (Side::Black, Some(PromoPiece::Queen)) => self.set_piece(Piece::BQ, mv.to),
-            (Side::Black, Some(PromoPiece::Rook)) => self.set_piece(Piece::BR, mv.to),
-            (Side::Black, Some(PromoPiece::Bishop)) => self.set_piece(Piece::BB, mv.to),
-            (Side::Black, Some(PromoPiece::Knight)) => self.set_piece(Piece::BN, mv.to),
-            (_, _) => {}
+        match mv.promo {
+            Some(PromoPiece::Queen) => {
+                self.pieces[Piece::Pawn as usize].unset(mv.to);
+                self.pieces[Piece::Queen as usize].set(mv.to);
+            }
+            Some(PromoPiece::Rook) => {
+                self.pieces[Piece::Pawn as usize].unset(mv.to);
+                self.pieces[Piece::Rook as usize].set(mv.to);
+            }
+            Some(PromoPiece::Bishop) => {
+                self.pieces[Piece::Pawn as usize].unset(mv.to);
+                self.pieces[Piece::Bishop as usize].set(mv.to);
+            }
+            Some(PromoPiece::Knight) => {
+                self.pieces[Piece::Pawn as usize].unset(mv.to);
+                self.pieces[Piece::Knight as usize].set(mv.to);
+            }
+            None => {}
         }
 
         // Castling permissions - Did white's king rook move or get captured?
@@ -107,50 +116,47 @@ impl Position {
         }
 
         // Castling wks
-        if piece == Piece::WK && mv.from == Square::from_index(4) && mv.to == Square::from_index(6)
+        if piece == Piece::King
+            && mv.from == Square::from_index(4)
+            && mv.to == Square::from_index(6)
         {
             self.clear_square(Square::from_index(7));
-            self.set_piece(Piece::WR, Square::from_index(5));
+            self.set_piece(Square::from_index(5), Side::White, Piece::Rook);
         }
 
         // Castling wqs
-        if piece == Piece::WK && mv.from == Square::from_index(4) && mv.to == Square::from_index(2)
+        if piece == Piece::King
+            && mv.from == Square::from_index(4)
+            && mv.to == Square::from_index(2)
         {
             self.clear_square(Square::from_index(0));
-            self.set_piece(Piece::WR, Square::from_index(3));
+            self.set_piece(Square::from_index(3), Side::White, Piece::Rook);
         }
 
         // Castling bks
-        if piece == Piece::BK
+        if piece == Piece::King
             && mv.from == Square::from_index(60)
             && mv.to == Square::from_index(62)
         {
             self.clear_square(Square::from_index(63));
-            self.set_piece(Piece::BR, Square::from_index(61));
+            self.set_piece(Square::from_index(61), Side::Black, Piece::Rook);
         }
 
         // Castling bqs
-        if piece == Piece::BK
+        if piece == Piece::King
             && mv.from == Square::from_index(60)
             && mv.to == Square::from_index(58)
         {
             self.clear_square(Square::from_index(56));
-            self.set_piece(Piece::BR, Square::from_index(59));
-        }
-
-        // Update the king square
-        if piece == Piece::WK {
-            self.ksq[Side::White as usize] = Some(mv.to);
-        }
-        if piece == Piece::BK {
-            self.ksq[Side::Black as usize] = Some(mv.to);
+            self.set_piece(Square::from_index(59), Side::Black, Piece::Rook);
         }
 
         // Side to move
         self.turn = !self.turn;
 
         // Legality check
-        !self.is_attacked(self.ksq[!self.turn as usize].unwrap(), self.turn)
+        let ksq = (self.colours[!self.turn as usize] & self.pieces[Piece::King as usize]).pop_lsb();
+        !self.is_attacked(ksq, self.turn)
     }
 }
 

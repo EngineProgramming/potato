@@ -34,6 +34,12 @@ impl Square {
             y: idx / 8,
         }
     }
+
+    /// Get square index
+    #[must_use]
+    pub const fn get_index(&self) -> u8 {
+        8 * self.y + self.x
+    }
 }
 
 impl Display for Square {

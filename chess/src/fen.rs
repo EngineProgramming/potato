@@ -27,53 +27,51 @@ impl Position {
 
             match c {
                 'P' => {
-                    self.set_piece(Piece::WP, sq);
+                    self.set_piece(sq, Side::White, Piece::Pawn);
                     x += 1;
                 }
                 'N' => {
-                    self.set_piece(Piece::WN, sq);
+                    self.set_piece(sq, Side::White, Piece::Knight);
                     x += 1;
                 }
                 'B' => {
-                    self.set_piece(Piece::WB, sq);
+                    self.set_piece(sq, Side::White, Piece::Bishop);
                     x += 1;
                 }
                 'R' => {
-                    self.set_piece(Piece::WR, sq);
+                    self.set_piece(sq, Side::White, Piece::Rook);
                     x += 1;
                 }
                 'Q' => {
-                    self.set_piece(Piece::WQ, sq);
+                    self.set_piece(sq, Side::White, Piece::Queen);
                     x += 1;
                 }
                 'K' => {
-                    self.set_piece(Piece::WK, sq);
-                    self.ksq[Side::White as usize] = Some(sq);
+                    self.set_piece(sq, Side::White, Piece::King);
                     x += 1;
                 }
                 'p' => {
-                    self.set_piece(Piece::BP, sq);
+                    self.set_piece(sq, Side::Black, Piece::Pawn);
                     x += 1;
                 }
                 'n' => {
-                    self.set_piece(Piece::BN, sq);
+                    self.set_piece(sq, Side::Black, Piece::Knight);
                     x += 1;
                 }
                 'b' => {
-                    self.set_piece(Piece::BB, sq);
+                    self.set_piece(sq, Side::Black, Piece::Bishop);
                     x += 1;
                 }
                 'r' => {
-                    self.set_piece(Piece::BR, sq);
+                    self.set_piece(sq, Side::Black, Piece::Rook);
                     x += 1;
                 }
                 'q' => {
-                    self.set_piece(Piece::BQ, sq);
+                    self.set_piece(sq, Side::Black, Piece::Queen);
                     x += 1;
                 }
                 'k' => {
-                    self.set_piece(Piece::BK, sq);
-                    self.ksq[Side::Black as usize] = Some(sq);
+                    self.set_piece(sq, Side::Black, Piece::King);
                     x += 1;
                 }
                 '1'..='8' => {
@@ -132,27 +130,28 @@ impl Position {
 
             for x in 0..=7 {
                 let sq = Square::from_file_rank(x, y);
-                let found = self.get_side_piece_on(sq);
+                let piece = self.get_piece_on(sq);
+                let colour = self.get_colour_on(sq);
 
-                if found.is_some() && empty > 0 {
+                if piece.is_some() && empty > 0 {
                     fen += &empty.to_string();
                     empty = 0;
                 }
 
-                match found {
-                    Some(Piece::WP) => fen += "P",
-                    Some(Piece::WN) => fen += "N",
-                    Some(Piece::WB) => fen += "B",
-                    Some(Piece::WR) => fen += "R",
-                    Some(Piece::WQ) => fen += "Q",
-                    Some(Piece::WK) => fen += "K",
-                    Some(Piece::BP) => fen += "p",
-                    Some(Piece::BN) => fen += "n",
-                    Some(Piece::BB) => fen += "b",
-                    Some(Piece::BR) => fen += "r",
-                    Some(Piece::BQ) => fen += "q",
-                    Some(Piece::BK) => fen += "k",
-                    None => empty += 1,
+                match (colour, piece) {
+                    (Some(Side::White), Some(Piece::Pawn)) => fen += "P",
+                    (Some(Side::White), Some(Piece::Knight)) => fen += "N",
+                    (Some(Side::White), Some(Piece::Bishop)) => fen += "B",
+                    (Some(Side::White), Some(Piece::Rook)) => fen += "R",
+                    (Some(Side::White), Some(Piece::Queen)) => fen += "Q",
+                    (Some(Side::White), Some(Piece::King)) => fen += "K",
+                    (Some(Side::Black), Some(Piece::Pawn)) => fen += "p",
+                    (Some(Side::Black), Some(Piece::Knight)) => fen += "n",
+                    (Some(Side::Black), Some(Piece::Bishop)) => fen += "b",
+                    (Some(Side::Black), Some(Piece::Rook)) => fen += "r",
+                    (Some(Side::Black), Some(Piece::Queen)) => fen += "q",
+                    (Some(Side::Black), Some(Piece::King)) => fen += "k",
+                    (_, _) => empty += 1,
                 }
             }
 
