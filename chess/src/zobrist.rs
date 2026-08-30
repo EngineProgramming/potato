@@ -429,6 +429,22 @@ mod tests {
     }
 
     #[test]
+    fn update_hash_false_skips_hash_maintenance_for_makenull() {
+        let fen = "r3k2r/6P1/8/3pP3/8/8/4P3/R3K2R w KQkq d6 0 1";
+        let mut pos = Position::from_fen(fen).unwrap();
+        let before_hash = pos.hash;
+
+        pos.makenull::<false>();
+
+        assert_eq!(pos.hash, before_hash, "hash should be untouched");
+        assert_ne!(
+            pos.hash,
+            pos.calculate_hash(),
+            "hash should now disagree with the real position"
+        );
+    }
+
+    #[test]
     fn predict_hash_ignores_illegality() {
         let fen = "4k3/1P2r3/1q6/5N2/2n3b1/4Q1p1/3n4/R3K2R w KQ - 0 1";
         let mut pos = Position::from_fen(fen).unwrap();

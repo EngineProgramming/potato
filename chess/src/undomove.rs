@@ -82,4 +82,14 @@ mod tests {
             assert_eq!(pos.hash, pos.calculate_hash(), "{movestr}");
         }
     }
+
+    #[test]
+    fn hash_field_matches_calculate_hash_after_makenull() {
+        let fen = "r3k2r/6P1/8/3pP3/8/8/4P3/R3K2R w KQkq d6 0 1";
+        let mut pos = Position::from_fen(fen).unwrap();
+
+        pos.makenull::<true>();
+
+        assert_eq!(pos.hash, pos.calculate_hash());
+    }
 }
