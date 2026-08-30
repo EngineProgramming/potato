@@ -9,6 +9,7 @@ pub mod makemove;
 pub mod makenull;
 pub mod movegen;
 pub mod mv;
+pub mod perft;
 pub mod position;
 pub mod square;
 pub mod undomove;
