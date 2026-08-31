@@ -19,7 +19,7 @@ fn stop_search(stop: &AtomicBool, search_thread: &mut Option<JoinHandle<()>>) {
 }
 
 pub fn listen() {
-    println!("id name Potato");
+    println!("id name Potato v1");
     println!("id author kz04px");
     println!("uciok");
     io::stdout().flush().ok();
@@ -64,10 +64,10 @@ pub fn listen() {
                 stop_search(&stop, &mut search_thread);
                 stop.store(false, Ordering::Relaxed);
 
-                let pos = pos.clone();
+                let mut pos = pos.clone();
                 let rest = rest.to_string();
                 let stop = Arc::clone(&stop);
-                search_thread = Some(thread::spawn(move || handle_go(&pos, &rest, &stop)));
+                search_thread = Some(thread::spawn(move || handle_go(&mut pos, &rest, &stop)));
             }
             "stop" => stop_search(&stop, &mut search_thread),
             "quit" => {

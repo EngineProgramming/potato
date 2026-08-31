@@ -1,3 +1,4 @@
+mod search;
 mod uci;
 
 use std::io::{self, BufRead};

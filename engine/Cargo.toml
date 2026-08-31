@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 chess = {path = "../chess"}
+rand = "0.10.2"

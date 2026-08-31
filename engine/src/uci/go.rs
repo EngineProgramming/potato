@@ -1,4 +1,6 @@
+use crate::search;
 use chess::position::Position;
+use std::io::{self, Write};
 use std::sync::atomic::AtomicBool;
 
 /// UCI "go" arguments
@@ -40,11 +42,15 @@ impl GoOptions {
     }
 }
 
-pub fn handle_go(_pos: &Position, rest: &str, _stop: &AtomicBool) {
-    let _options = GoOptions::parse(rest);
+pub fn handle_go(pos: &mut Position, rest: &str, stop: &AtomicBool) {
+    let options = GoOptions::parse(rest);
+    let bestmove = search::search(pos, &options, stop);
 
-    // No search implemented yet.
-    unimplemented!()
+    match bestmove {
+        Some(mv) => println!("bestmove {mv}"),
+        None => println!("bestmove 0000"),
+    }
+    io::stdout().flush().ok();
 }
 
 #[cfg(test)]

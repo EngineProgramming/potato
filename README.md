@@ -16,3 +16,4 @@ A step by step tutorial on how to create a chess engine in Rust.
 - [Part 10](./parts/0010.md) - Nullmove
 - [Part 11](./parts/0011.md) - Perft
 - [Part 12](./parts/0012.md) - UCI
+- [Part 13](./parts/0013.md) - Random Mover
