@@ -19,7 +19,7 @@ fn stop_search(stop: &AtomicBool, search_thread: &mut Option<JoinHandle<()>>) {
 }
 
 pub fn listen() {
-    println!("id name Potato v1");
+    println!("id name Potato v2");
     println!("id author kz04px");
     println!("uciok");
     io::stdout().flush().ok();
