@@ -24,52 +24,52 @@ impl Position {
 
             match c {
                 'P' => {
-                    pos.set_piece(Piece::WP, sq);
+                    pos.set_piece::<false>(Piece::WP, sq);
                     x += 1;
                 }
                 'N' => {
-                    pos.set_piece(Piece::WN, sq);
+                    pos.set_piece::<false>(Piece::WN, sq);
                     x += 1;
                 }
                 'B' => {
-                    pos.set_piece(Piece::WB, sq);
+                    pos.set_piece::<false>(Piece::WB, sq);
                     x += 1;
                 }
                 'R' => {
-                    pos.set_piece(Piece::WR, sq);
+                    pos.set_piece::<false>(Piece::WR, sq);
                     x += 1;
                 }
                 'Q' => {
-                    pos.set_piece(Piece::WQ, sq);
+                    pos.set_piece::<false>(Piece::WQ, sq);
                     x += 1;
                 }
                 'K' => {
-                    pos.set_piece(Piece::WK, sq);
+                    pos.set_piece::<false>(Piece::WK, sq);
                     pos.ksq[Side::White] = Some(sq);
                     x += 1;
                 }
                 'p' => {
-                    pos.set_piece(Piece::BP, sq);
+                    pos.set_piece::<false>(Piece::BP, sq);
                     x += 1;
                 }
                 'n' => {
-                    pos.set_piece(Piece::BN, sq);
+                    pos.set_piece::<false>(Piece::BN, sq);
                     x += 1;
                 }
                 'b' => {
-                    pos.set_piece(Piece::BB, sq);
+                    pos.set_piece::<false>(Piece::BB, sq);
                     x += 1;
                 }
                 'r' => {
-                    pos.set_piece(Piece::BR, sq);
+                    pos.set_piece::<false>(Piece::BR, sq);
                     x += 1;
                 }
                 'q' => {
-                    pos.set_piece(Piece::BQ, sq);
+                    pos.set_piece::<false>(Piece::BQ, sq);
                     x += 1;
                 }
                 'k' => {
-                    pos.set_piece(Piece::BK, sq);
+                    pos.set_piece::<false>(Piece::BK, sq);
                     pos.ksq[Side::Black] = Some(sq);
                     x += 1;
                 }
@@ -121,6 +121,8 @@ impl Position {
         if pos.ksq[Side::White].is_none() || pos.ksq[Side::Black].is_none() {
             return Err(());
         }
+
+        pos.hash = pos.calculate_hash();
 
         Ok(pos)
     }

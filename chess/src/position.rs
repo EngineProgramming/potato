@@ -1,4 +1,4 @@
-use crate::{Piece, Side, square::Square, undomove::Undo};
+use crate::{Piece, Side, square::Square, undomove::Undo, zobrist::piece_key};
 
 /// This struct holds all the information about a chess position.
 #[derive(Clone)]
@@ -11,6 +11,7 @@ pub struct Position {
     pub castling: [bool; 4],
     pub ksq: [Option<Square>; 2],
     pub history: Vec<Undo>,
+    pub hash: u64,
 }
 
 impl Default for Position {
@@ -24,6 +25,7 @@ impl Default for Position {
             castling: [false; 4],
             ksq: [None; 2],
             history: Vec::new(),
+            hash: 0,
         }
     }
 }
@@ -35,13 +37,22 @@ impl Position {
         self.board[sq.get_x() as usize][sq.get_y() as usize]
     }
 
-    /// Place a piece on the board
-    pub const fn set_piece(&mut self, piece: Piece, sq: Square) {
+    /// Place a piece on the board, optionally updating the hash incrementally
+    pub(crate) fn set_piece<const UPDATE_HASH: bool>(&mut self, piece: Piece, sq: Square) {
+        if UPDATE_HASH {
+            if let Some(old) = self.get_side_piece_on(sq) {
+                self.hash ^= piece_key(old, sq);
+            }
+            self.hash ^= piece_key(piece, sq);
+        }
         self.board[sq.get_x() as usize][sq.get_y() as usize] = Some(piece);
     }
 
-    /// Clear a square on the board
-    pub const fn clear_square(&mut self, sq: Square) {
+    /// Clear a square on the board, optionally updating the hash incrementally
+    pub(crate) fn clear_square<const UPDATE_HASH: bool>(&mut self, sq: Square) {
+        if UPDATE_HASH && let Some(old) = self.get_side_piece_on(sq) {
+            self.hash ^= piece_key(old, sq);
+        }
         self.board[sq.get_x() as usize][sq.get_y() as usize] = None;
     }
 

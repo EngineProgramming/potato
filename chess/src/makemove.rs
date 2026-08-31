@@ -3,13 +3,14 @@ use crate::{
     mv::{Mv, PromoPiece},
     position::Position,
     square::Square,
+    zobrist::{SIDE_KEY, castling_key, ep_key},
 };
 
 impl Position {
     /// Apply a pseudolegal move to the board
     /// Returns whether the move was legal or not
     #[must_use]
-    pub fn makemove(&mut self, mv: &Mv) -> bool {
+    pub fn makemove<const UPDATE_HASH: bool>(&mut self, mv: &Mv) -> bool {
         self.history.push(self.save_undo());
 
         let piece = self
@@ -17,14 +18,15 @@ impl Position {
             .expect("No piece on move origin square");
 
         let captured = self.get_side_piece_on(mv.to);
+        let old_castling = self.castling;
 
         self.halfmoves += 1;
 
         // Remove piece
-        self.clear_square(mv.from);
+        self.clear_square::<UPDATE_HASH>(mv.from);
 
         // Remove captured
-        self.set_piece(piece, mv.to);
+        self.set_piece::<UPDATE_HASH>(piece, mv.to);
 
         // Pawn moves reset the halfmove counter
         if piece == Piece::WP || piece == Piece::BP {
@@ -41,18 +43,27 @@ impl Position {
             && piece == Piece::WP
             && mv.to == sq
         {
-            self.clear_square(Square::from_file_rank(mv.to.get_x(), mv.to.get_y() - 1));
+            self.clear_square::<UPDATE_HASH>(Square::from_file_rank(
+                mv.to.get_x(),
+                mv.to.get_y() - 1,
+            ));
             self.halfmoves = 0;
         }
         if let Some(sq) = self.ep
             && piece == Piece::BP
             && mv.to == sq
         {
-            self.clear_square(Square::from_file_rank(mv.to.get_x(), mv.to.get_y() + 1));
+            self.clear_square::<UPDATE_HASH>(Square::from_file_rank(
+                mv.to.get_x(),
+                mv.to.get_y() + 1,
+            ));
             self.halfmoves = 0;
         }
 
         // Clear EP square
+        if UPDATE_HASH && let Some(sq) = self.ep {
+            self.hash ^= ep_key(sq.get_x());
+        }
         self.ep = None;
 
         // Set EP square?
@@ -62,17 +73,36 @@ impl Position {
         if piece == Piece::BP && mv.from.get_y() == 6 && mv.to.get_y() == 4 {
             self.ep = Some(Square::from_file_rank(mv.from.get_x(), 5));
         }
+        if UPDATE_HASH && let Some(sq) = self.ep {
+            self.hash ^= ep_key(sq.get_x());
+        }
 
         // Promotions
         match (self.turn, mv.promo) {
-            (Side::White, Some(PromoPiece::Queen)) => self.set_piece(Piece::WQ, mv.to),
-            (Side::White, Some(PromoPiece::Rook)) => self.set_piece(Piece::WR, mv.to),
-            (Side::White, Some(PromoPiece::Bishop)) => self.set_piece(Piece::WB, mv.to),
-            (Side::White, Some(PromoPiece::Knight)) => self.set_piece(Piece::WN, mv.to),
-            (Side::Black, Some(PromoPiece::Queen)) => self.set_piece(Piece::BQ, mv.to),
-            (Side::Black, Some(PromoPiece::Rook)) => self.set_piece(Piece::BR, mv.to),
-            (Side::Black, Some(PromoPiece::Bishop)) => self.set_piece(Piece::BB, mv.to),
-            (Side::Black, Some(PromoPiece::Knight)) => self.set_piece(Piece::BN, mv.to),
+            (Side::White, Some(PromoPiece::Queen)) => {
+                self.set_piece::<UPDATE_HASH>(Piece::WQ, mv.to)
+            }
+            (Side::White, Some(PromoPiece::Rook)) => {
+                self.set_piece::<UPDATE_HASH>(Piece::WR, mv.to)
+            }
+            (Side::White, Some(PromoPiece::Bishop)) => {
+                self.set_piece::<UPDATE_HASH>(Piece::WB, mv.to)
+            }
+            (Side::White, Some(PromoPiece::Knight)) => {
+                self.set_piece::<UPDATE_HASH>(Piece::WN, mv.to)
+            }
+            (Side::Black, Some(PromoPiece::Queen)) => {
+                self.set_piece::<UPDATE_HASH>(Piece::BQ, mv.to)
+            }
+            (Side::Black, Some(PromoPiece::Rook)) => {
+                self.set_piece::<UPDATE_HASH>(Piece::BR, mv.to)
+            }
+            (Side::Black, Some(PromoPiece::Bishop)) => {
+                self.set_piece::<UPDATE_HASH>(Piece::BB, mv.to)
+            }
+            (Side::Black, Some(PromoPiece::Knight)) => {
+                self.set_piece::<UPDATE_HASH>(Piece::BN, mv.to)
+            }
             (_, _) => {}
         }
 
@@ -110,26 +140,26 @@ impl Position {
 
         // Castling wks
         if piece == Piece::WK && mv.from == Square::E1 && mv.to == Square::G1 {
-            self.clear_square(Square::H1);
-            self.set_piece(Piece::WR, Square::F1);
+            self.clear_square::<UPDATE_HASH>(Square::H1);
+            self.set_piece::<UPDATE_HASH>(Piece::WR, Square::F1);
         }
 
         // Castling wqs
         if piece == Piece::WK && mv.from == Square::E1 && mv.to == Square::C1 {
-            self.clear_square(Square::A1);
-            self.set_piece(Piece::WR, Square::D1);
+            self.clear_square::<UPDATE_HASH>(Square::A1);
+            self.set_piece::<UPDATE_HASH>(Piece::WR, Square::D1);
         }
 
         // Castling bks
         if piece == Piece::BK && mv.from == Square::E8 && mv.to == Square::G8 {
-            self.clear_square(Square::H8);
-            self.set_piece(Piece::BR, Square::F8);
+            self.clear_square::<UPDATE_HASH>(Square::H8);
+            self.set_piece::<UPDATE_HASH>(Piece::BR, Square::F8);
         }
 
         // Castling bqs
         if piece == Piece::BK && mv.from == Square::E8 && mv.to == Square::C8 {
-            self.clear_square(Square::A8);
-            self.set_piece(Piece::BR, Square::D8);
+            self.clear_square::<UPDATE_HASH>(Square::A8);
+            self.set_piece::<UPDATE_HASH>(Piece::BR, Square::D8);
         }
 
         // Update the king square
@@ -148,6 +178,17 @@ impl Position {
         // Side to move
         self.turn = !self.turn;
 
+        if UPDATE_HASH {
+            self.hash ^= SIDE_KEY;
+
+            // Castling rights can only be lost, never gained, during a move
+            for right in Castling::ALL {
+                if old_castling[right] && !self.castling[right] {
+                    self.hash ^= castling_key(right);
+                }
+            }
+        }
+
         // Legality check
         !self.is_attacked(self.ksq[!self.turn].unwrap(), self.turn)
     }
@@ -165,7 +206,7 @@ mod tests {
         for movestr in legal {
             let mut pos = Position::from_fen(fen).unwrap();
             let mv = movestr.parse().unwrap();
-            let success = pos.makemove(&mv);
+            let success = pos.makemove::<true>(&mv);
             assert!(success, "Move \"{movestr}\" was meant to be legal");
         }
     }
@@ -178,7 +219,7 @@ mod tests {
         for movestr in illegal {
             let mut pos = Position::from_fen(fen).unwrap();
             let mv = movestr.parse().unwrap();
-            let success = pos.makemove(&mv);
+            let success = pos.makemove::<true>(&mv);
             assert!(!success, "Move \"{movestr}\" was meant to be illegal");
         }
     }
@@ -213,7 +254,7 @@ mod tests {
         for (movestr, fen) in tests {
             let mut pos = Position::from_fen(startfen).unwrap();
             let mv = movestr.parse().unwrap();
-            let success = pos.makemove(&mv);
+            let success = pos.makemove::<true>(&mv);
 
             assert!(success);
             assert_eq!(pos.get_fen(), fen);
@@ -224,13 +265,13 @@ mod tests {
     fn fullmoves_increment() {
         let mut pos = Position::from_fen("startpos").unwrap();
 
-        assert!(pos.makemove(&"e2e4".parse().unwrap()));
+        assert!(pos.makemove::<true>(&"e2e4".parse().unwrap()));
         assert_eq!(
             pos.fullmoves, 1,
             "fullmoves shouldn't increment after White's move"
         );
 
-        assert!(pos.makemove(&"e7e5".parse().unwrap()));
+        assert!(pos.makemove::<true>(&"e7e5".parse().unwrap()));
         assert_eq!(
             pos.fullmoves, 2,
             "fullmoves should increment after Black's move"

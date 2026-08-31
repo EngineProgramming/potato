@@ -10,6 +10,7 @@ pub struct Undo {
     ep: Option<Square>,
     castling: [bool; 4],
     ksq: [Option<Square>; 2],
+    hash: u64,
 }
 
 impl Position {
@@ -22,6 +23,7 @@ impl Position {
             ep: self.ep,
             castling: self.castling,
             ksq: self.ksq,
+            hash: self.hash,
         }
     }
 
@@ -35,6 +37,7 @@ impl Position {
         self.ep = undo.ep;
         self.castling = undo.castling;
         self.ksq = undo.ksq;
+        self.hash = undo.hash;
     }
 }
 
@@ -52,12 +55,31 @@ mod tests {
         for movestr in moves {
             let mut pos = Position::from_fen(fen).unwrap();
             let before = pos.get_fen();
+            let before_hash = pos.hash;
             let mv = movestr.parse().unwrap();
 
-            let _ = pos.makemove(&mv);
+            let _ = pos.makemove::<true>(&mv);
             pos.undomove();
 
             assert_eq!(pos.get_fen(), before, "{movestr}");
+            assert_eq!(pos.hash, before_hash, "{movestr}");
+        }
+    }
+
+    #[test]
+    fn hash_field_matches_calculate_hash_after_makemove() {
+        let fen = "r3k2r/6P1/8/3pP3/8/8/4P3/R3K2R w KQkq d6 0 1";
+        let moves = [
+            "e5e6", "e2e3", "e2e4", "e5d6", "g7g8q", "e1g1", "e1c1", "h1h8", "a1a8",
+        ];
+
+        for movestr in moves {
+            let mut pos = Position::from_fen(fen).unwrap();
+            let mv = movestr.parse().unwrap();
+
+            let _ = pos.makemove::<true>(&mv);
+
+            assert_eq!(pos.hash, pos.calculate_hash(), "{movestr}");
         }
     }
 }

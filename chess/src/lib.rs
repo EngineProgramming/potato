@@ -10,6 +10,7 @@ pub mod mv;
 pub mod position;
 pub mod square;
 pub mod undomove;
+pub mod zobrist;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum Piece {
@@ -61,11 +62,16 @@ impl<T> IndexMut<Side> for [T; 2] {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum Castling {
     WKS,
     WQS,
     BKS,
     BQS,
+}
+
+impl Castling {
+    pub const ALL: [Self; 4] = [Self::WKS, Self::WQS, Self::BKS, Self::BQS];
 }
 
 impl<T> Index<Castling> for [T; 4] {
