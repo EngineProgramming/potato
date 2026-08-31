@@ -12,3 +12,4 @@ A step by step tutorial on how to create a chess engine in Rust.
 - [Part 6](./parts/0006.md) - Makemove
 - [Part 7](./parts/0007.md) - Pseudolegal Move Generation
 - [Part 8](./parts/0008.md) - Zobrist Hashing
+- [Part 9](./parts/0009.md) - Draw Detection

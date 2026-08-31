@@ -2,6 +2,7 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Not;
 
+pub mod draw;
 pub mod fen;
 pub mod is_attacked;
 pub mod makemove;

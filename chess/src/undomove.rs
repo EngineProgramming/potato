@@ -10,7 +10,7 @@ pub struct Undo {
     ep: Option<Square>,
     castling: [bool; 4],
     ksq: [Option<Square>; 2],
-    hash: u64,
+    pub(crate) hash: u64,
 }
 
 impl Position {
