@@ -2,6 +2,7 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Not;
 
+pub mod fen;
 pub mod position;
 pub mod square;
 
@@ -52,6 +53,27 @@ impl<T> Index<Side> for [T; 2] {
 impl<T> IndexMut<Side> for [T; 2] {
     fn index_mut(&mut self, side: Side) -> &mut Self::Output {
         &mut self[side as usize]
+    }
+}
+
+pub enum Castling {
+    WKS,
+    WQS,
+    BKS,
+    BQS,
+}
+
+impl<T> Index<Castling> for [T; 4] {
+    type Output = T;
+
+    fn index(&self, right: Castling) -> &Self::Output {
+        &self[right as usize]
+    }
+}
+
+impl<T> IndexMut<Castling> for [T; 4] {
+    fn index_mut(&mut self, right: Castling) -> &mut Self::Output {
+        &mut self[right as usize]
     }
 }
 
